@@ -11,14 +11,27 @@ router = APIRouter()
 # In a real multi-user app, this should be in Redis or DB per user
 active_games = {}
 
-class LoginRequest(BaseModel):
+class AuthRequest(BaseModel):
     username: str
+    password: str
+
+@router.post("/auth/register")
+async def register(req: AuthRequest, db: Session = Depends(get_db)):
+    auth = AuthInteractor(db)
+    try:
+        user = auth.register(req.username, req.password)
+        return {"id": user.id, "username": user.username, "balance": user.balance}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/auth/login")
-async def login(req: LoginRequest, db: Session = Depends(get_db)):
+async def login(req: AuthRequest, db: Session = Depends(get_db)):
     auth = AuthInteractor(db)
-    user = auth.login_or_register(req.username)
-    return {"id": user.id, "username": user.username, "balance": user.balance}
+    try:
+        user = auth.login(req.username, req.password)
+        return {"id": user.id, "username": user.username, "balance": user.balance}
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
 
 @router.get("/user/{user_id}/status")
 async def get_status(user_id: int, db: Session = Depends(get_db)):

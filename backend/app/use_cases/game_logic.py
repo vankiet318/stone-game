@@ -38,11 +38,19 @@ class AuthInteractor:
     def __init__(self, db: Session):
         self.db = db
 
-    def login_or_register(self, username: str) -> User:
+    def register(self, username: str, password: str) -> User:
+        existing_user = self.db.query(User).filter(User.username == username).first()
+        if existing_user:
+            raise ValueError("Username already exists")
+        
+        user = User(username=username, password=password, balance=1000)
+        self.db.add(user)
+        self.db.commit()
+        self.db.refresh(user)
+        return user
+
+    def login(self, username: str, password: str) -> User:
         user = self.db.query(User).filter(User.username == username).first()
-        if not user:
-            user = User(username=username, balance=1000)
-            self.db.add(user)
-            self.db.commit()
-            self.db.refresh(user)
+        if not user or user.password != password:
+            raise ValueError("Invalid username or password")
         return user
